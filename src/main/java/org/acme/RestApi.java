@@ -32,8 +32,7 @@ public class RestApi extends EndpointRouteBuilder {
                 .get("/todos")
                 .description("This endpoint gets the data from https://jsonplaceholder.typicode.com/todos and returns it formatted as a PDF.")
                 .produces("application/pdf")
-                .to(direct("todosPdf").getUri())
-                ;
+                .to(direct("todosPdf").getUri());
 
         from(direct("todosPdf"))
                 .routeId("todosPdfRoute")
