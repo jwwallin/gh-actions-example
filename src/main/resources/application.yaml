@@ -1,0 +1,3 @@
+source:
+  host: 'jsonplaceholder.typicode.com'
+  path: '/todos'
