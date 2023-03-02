@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RestApiTest {
 
     private static byte[] todosPdfCorrect;
+    private static byte[] todosPdfWithMistake;
 
     private static Client client;
 
@@ -30,6 +31,7 @@ class RestApiTest {
     @BeforeAll
     public static void loadTestResources() throws Exception {
         todosPdfCorrect = readClassPathFile("_files/todos_correct.pdf");
+        todosPdfWithMistake = readClassPathFile("_files/todos_w_mistake.pdf");
     }
 
     @BeforeAll
@@ -49,6 +51,18 @@ class RestApiTest {
         assertEquals(200, res.getStatus());
         var responseData = res.readEntity(InputStream.class);
         var result = new PdfComparator<>(new ByteArrayInputStream(todosPdfCorrect), responseData).compare();
+        assertTrue(result.isEqual());
+    }
+
+    /**
+     * This test fails on purpose.
+     */
+    @Test
+    public void testGettingFile2() throws IOException {
+        Response res = client.target(HOST + "/todos").request().get();
+        assertEquals(200, res.getStatus());
+        var responseData = res.readEntity(InputStream.class);
+        var result = new PdfComparator<>(new ByteArrayInputStream(todosPdfWithMistake), responseData).compare();
         assertTrue(result.isEqual());
     }
 
