@@ -11,6 +11,8 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
@@ -63,7 +65,7 @@ class RestApiTest {
         assertEquals(200, res.getStatus());
         var responseData = res.readEntity(InputStream.class);
         var result = new PdfComparator<>(new ByteArrayInputStream(todosPdfWithMistake), responseData).compare();
-        assertTrue(result.isEqual());
+        assertTrue(result.isNotEqual());
     }
 
     private static byte[] readClassPathFile(String path) throws IOException {
