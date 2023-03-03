@@ -1,0 +1,66 @@
+name: 'Surefire Report'
+description: 'Uploads the surefire report xml to a new check'
+inputs:
+  reports_path:
+    description: 'Location of the surefire reports'
+    required: true
+    default: '${{github.workspace}}/target/surefire-reports'
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: sudo apt update && sudo apt install libxml-xpath-perl
+    - id: aggregate-report
+      shell: bash
+      run: |
+        ANNOTATIONS="["
+        
+        for f in ${{ inputs.reports_path }}/*.xml; do
+          RESULT=$(cat "$f")
+          
+          FAILURE_COUNT=$( echo $RESULT | xpath -q -e "count(//testcase[failure])" )
+          ERROR_COUNT=$( echo $RESULT | xpath -q -e "count(//testcase[error])" )
+          FLAKY_COUNT=$( echo $RESULT | xpath -q -e "count(//testcase[flakyFailure])" )
+        
+          for (( c=1; c<=$FAILURE_COUNT; c++ )); do
+            [ "${ANNOTATIONS:$length:1}" == "}" ] && ANNOTATIONS="$ANNOTATIONS,"
+            testname=$( echo $RESULT | xpath -q -e "string(//testcase[failure][$c]/@name)")
+            classname=$( echo $RESULT | xpath -q -e "string(//testcase[failure][$c]/@classname)")
+            filepath=src/test/java/$( echo $classname | tr '.' '/').java
+            message=$( echo $RESULT | xpath -q -e "string(//testcase[failure][$c]/failure/@message)")
+            ANNOTATIONS="$ANNOTATIONS{\\\"annotation_level\\\":\\\"failure\\\",\\\"path\\\":\\\"$filepath\\\",\\\"start_line\\\":1,\\\"end_line\\\":1,\\\"message\\\":\\\"$testname failed:\\\t$message\\\"}"
+          done
+          for (( c=1; c<=$ERROR_COUNT; c++ )); do
+            [ "${ANNOTATIONS:$length:1}" == "}" ] && ANNOTATIONS="$ANNOTATIONS,"
+            testname=$( echo $RESULT | xpath -q -e "string(//testcase[error][$c]/@name)")
+            classname=$( echo $RESULT | xpath -q -e "string(//testcase[error][$c]/@classname)")
+            filepath=src/test/java/$( echo $classname | tr '.' '/').java
+            message=$( echo $RESULT | xpath -q -e "string(//testcase[error][$c]/error/@message)")
+            ANNOTATIONS="$ANNOTATIONS{\\\"annotation_level\\\":\\\"failure\\\",\\\"path\\\":\\\"$filepath\\\",\\\"start_line\\\":1,\\\"end_line\\\":1,\\\"message\\\":\\\"$testname failed:\\\n$message\\\"}"
+          done
+          for (( c=1; c<=$FLAKY_COUNT; c++ )); do
+            [ "${ANNOTATIONS:$length:1}" == "}" ] && ANNOTATIONS="$ANNOTATIONS,"
+            testname=$( echo $RESULT | xpath -q -e "string(//testcase[flakyFailure][$c]/@name)")
+            classname=$( echo $RESULT | xpath -q -e "string(//testcase[flakyFailure][$c]/@classname)")
+            filepath=src/test/java/$( echo $classname | tr '.' '/').java
+            message=$( echo $RESULT | xpath -q -e "string(//testcase[flakyFailure][$c]/flakyFailure/@message)")
+            ANNOTATIONS="$ANNOTATIONS{\\\"annotation_level\\\":\\\"failure\\\",\\\"path\\\":\\\"$filepath\\\",\\\"start_line\\\":1,\\\"end_line\\\":1,\\\"message\\\":\\\"$testname failed:\\\n$message\\\"}"
+          done
+        done
+        ANNOTATIONS="$ANNOTATIONS]"
+        
+        RESULT=$( echo $RESULT | tr \" \' )
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "REPORT_ANNOTATIONS<<$EOF" >> $GITHUB_ENV
+        echo "$ANNOTATIONS" >> $GITHUB_ENV
+        echo "$EOF" >> $GITHUB_ENV
+    - shell: bash
+      run: |
+        curl \
+          -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ github.token }}"\
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          ${{ github.api_url }}/repos/${{ github.repository }}/check-runs \
+          -d "{\"name\":\"Surefire Report\",\"head_sha\":\"${{ github.sha }}\",\"status\":\"completed\",\"conclusion\":\"neutral\",\"output\":{\"title\":\"Surefire Report\",\"summary\":\"Report XML\",\"annotations\":${{ env.REPORT_ANNOTATIONS }}}}"

@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,6 +26,10 @@ jobs:
       - name: Maven verify
         shell: bash
         run: ./mvnw --batch-mode verify
+
+      - name: Add report
+        if: ${{ always() }}
+        uses: ./actions/surefire-report
 
   package-and-dockerize:
     runs-on: ubuntu-latest

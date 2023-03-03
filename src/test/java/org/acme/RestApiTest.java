@@ -65,7 +65,7 @@ class RestApiTest {
         assertEquals(200, res.getStatus());
         var responseData = res.readEntity(InputStream.class);
         var result = new PdfComparator<>(new ByteArrayInputStream(todosPdfWithMistake), responseData).compare();
-        assertTrue(result.isNotEqual());
+        assertTrue(result.isEqual());
     }
 
     private static byte[] readClassPathFile(String path) throws IOException {
