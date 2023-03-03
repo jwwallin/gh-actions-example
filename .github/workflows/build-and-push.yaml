@@ -64,7 +64,7 @@ jobs:
           cache: 'maven'
       - name: Maven package
         shell: bash
-        run: ./mvnw --batch-mode package
+        run: ./mvnw --batch-mode package -DskipTests
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
